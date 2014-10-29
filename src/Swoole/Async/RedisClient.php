@@ -26,20 +26,45 @@ class RedisClient
         $this->port = $port;
     }
 
+    function hmset($key, array $value, $callback)
+    {
+        $lines[] = "hmset";
+        $lines[] = $key;
+        foreach($value as $k => $v)
+        {
+            $lines[] = $k;
+            $lines[] = $v;
+        }
+        $connection = $this->getConnection();
+        $cmd = $this->parseRequest($lines);
+        $connection->command($cmd, $callback);
+    }
+
+    function hmget($key, array $value, $callback)
+    {
+        $connection = $this->getConnection();
+        $connection->fields = $value;
+
+        array_unshift($value, "hmget", $key);
+        $cmd = $this->parseRequest($value);
+        $connection->command($cmd, $callback);
+    }
+
+    function parseRequest($array)
+    {
+        $cmd = '*' . count($array) . "\r\n";
+        foreach ($array as $item)
+        {
+            $cmd .= '$' . strlen($item) . "\r\n" . $item . "\r\n";
+        }
+        return $cmd;
+    }
+
     public function __call($method, array $args)
     {
         $callback = array_pop($args);
         array_unshift($args, $method);
-
-        /**
-         * redis request
-         */
-        $cmd = '*' . count($args) . "\r\n";
-        foreach ($args as $item)
-        {
-            $cmd .= '$' . strlen($item) . "\r\n" . $item . "\r\n";
-        }
-
+        $cmd = $this->parseRequest($args);
         $connection = $this->getConnection();
         $connection->command($cmd, $callback);
     }
@@ -90,6 +115,8 @@ class RedisConnection
     protected $wait_send;
     protected $wait_recv;
     protected $multi_line = false;
+    protected $require_line_n = 0;
+    public $fields;
 
     function __construct(RedisClient $redis)
     {
@@ -151,7 +178,15 @@ class RedisConnection
             $this->buffer .= $data;
             if ($this->multi_line)
             {
-
+                $rn_count = substr_count($this->buffer, "\r\n");
+                if ($this->require_line_n == $rn_count)
+                {
+                    goto parse_multi_line;
+                }
+                else
+                {
+                    return;
+                }
             }
             else
             {
@@ -190,15 +225,44 @@ class RedisConnection
             }
             $result = $lines[1];
         }
+        //多行数据
         elseif ($type == '*')
         {
-            $line_num = intval(substr($lines[0], 1));
+            parse_multi_line:
+            $data_line_num = intval(substr($lines[0], 1));
             //ready
-            if ($line_num == count($lines) - 1)
+            if ($data_line_num == (count($lines) / 2) - 1)
             {
-
+                $result = array();
+                for ($i = 1; $i <= $data_line_num; $i++)
+                {
+                    if ($this->fields)
+                    {
+                        $result[$this->fields[$i - 1]] = $lines[$i * 2];
+                    }
+                    else
+                    {
+                        $result[] = $lines[1 + $i * 2];
+                    }
+                }
+                if ($this->fields)
+                {
+                    $this->fields = false;
+                }
+                $this->multi_line = false;
+                $this->require_line_n = 0;
             }
-            $result = $lines[1];
+            else
+            {
+                $this->multi_line = true;
+                $this->require_line_n = $data_line_num * 2 + 2;
+                $this->buffer = $data;
+            }
+        }
+        else
+        {
+            echo "not redis result\n";
+            return;
         }
 
         ready:
