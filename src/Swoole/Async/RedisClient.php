@@ -74,7 +74,7 @@ class RedisClient
 class RedisConnection
 {
     /**
-     * @var Redis
+     * @var RedisClient
      */
     protected $redis;
     protected $buffer = '';
@@ -91,7 +91,7 @@ class RedisConnection
     protected $wait_recv;
     protected $multi_line = false;
 
-    function __construct(Redis $redis)
+    function __construct(RedisClient $redis)
     {
         $client = new \swoole_client(SWOOLE_SOCK_TCP, SWOOLE_SOCK_ASYNC);
         $client->on('connect', array($this, 'onConnect'));

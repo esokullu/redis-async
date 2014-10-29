@@ -5,12 +5,12 @@ Asynchronous redis client library for PHP.
 How to use
 ------
 
-install swoole extension
+####1. Install swoole extension
 ```shell
 pecl install swoole
 ```
 
-run example code
+####2. Run example code
 ```php
 require __DIR__.'/src/Swoole/Async/RedisClient.php';
 $redis = new Swoole\Async\RedisClient('127.0.0.1');
@@ -25,5 +25,4 @@ $redis->select('2', function () use ($redis) {
         }
     });
 });
-
 ```
