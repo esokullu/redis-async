@@ -7,12 +7,16 @@ namespace Swoole\Async;
  * @method set
  * @method get
  * @method select
+ * @method hexists
+ * @method sadd
+ * @method sMembers
  * @package Swoole\Async
  */
 class RedisClient
 {
     public $host;
     public $port;
+    public $debug = false;
 
     /**
      * 空闲连接池
@@ -24,6 +28,14 @@ class RedisClient
     {
         $this->host = $host;
         $this->port = $port;
+    }
+
+    function trace($msg)
+    {
+        if ($this->debug)
+        {
+            echo "-----------------------------------------\n".trim($msg)."\n-----------------------------------------\n";
+        }
     }
 
     function hmset($key, array $value, $callback)
@@ -173,6 +185,7 @@ class RedisConnection
 
     function onReceive($cli, $data)
     {
+        $this->redis->trace($data);
         if ($this->wait_recv)
         {
             $this->buffer .= $data;
@@ -230,19 +243,22 @@ class RedisConnection
         {
             parse_multi_line:
             $data_line_num = intval(substr($lines[0], 1));
+            //echo "data_line_num=$data_line_num\n";
             //ready
+            //TODO: 这里解析是不对的，有不存在key会导致失败
             if ($data_line_num == (count($lines) / 2) - 1)
             {
                 $result = array();
                 for ($i = 1; $i <= $data_line_num; $i++)
                 {
+                    //echo $i."\n";
                     if ($this->fields)
                     {
                         $result[$this->fields[$i - 1]] = $lines[$i * 2];
                     }
                     else
                     {
-                        $result[] = $lines[1 + $i * 2];
+                        $result[] = $lines[$i * 2];
                     }
                 }
                 if ($this->fields)
@@ -259,9 +275,13 @@ class RedisConnection
                 $this->buffer = $data;
             }
         }
+        elseif ($type == ':')
+        {
+            $result = intval(substr($lines[0], 1));
+        }
         else
         {
-            echo "not redis result\n";
+            echo "Response is not a redis result. String:\n$data\n";
             return;
         }
 
@@ -269,7 +289,6 @@ class RedisConnection
         $this->redis->freeConnection($cli->sock, $this);
         call_user_func($this->callback, $result, $success);
     }
-
 
     function onClose(\swoole_client $cli)
     {
