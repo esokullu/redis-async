@@ -1,6 +1,8 @@
 redis-async
 ===========
-Asynchronous redis client library for PHP.
+* event-based, asynchronous non-blocking
+* built-in connection pool
+* support concurrent requests
 
 How to use
 ------
