@@ -38,6 +38,12 @@ class RedisClient
         }
     }
 
+    function stats()
+    {
+        $stats = "Idle connection: ".count($this->pool)."<br />\n";
+        return $stats;
+    }
+
     function hmset($key, array $value, $callback)
     {
         $lines[] = "hmset";
@@ -89,7 +95,11 @@ class RedisClient
     {
         if (count($this->pool) > 0)
         {
-            return array_shift($this->pool);
+            foreach($this->pool as $k => $connection)
+            {
+                unset($this->pool[$k]);
+                return $connection;
+            }
         }
         else
         {
@@ -292,6 +302,10 @@ class RedisConnection
 
     function onClose(\swoole_client $cli)
     {
-        unset($this->redis->pool[$cli->sock]);
+        if ($this->wait_send)
+        {
+            $this->redis->freeConnection($cli->sock, $this);
+            call_user_func($this->callback, "timeout", false);
+        }
     }
 }
