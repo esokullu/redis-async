@@ -95,11 +95,15 @@ class RedisClient
     {
         if (count($this->pool) > 0)
         {
+            /**
+             * @var $connection RedisConnection
+             */
             foreach($this->pool as $k => $connection)
             {
                 unset($this->pool[$k]);
-                return $connection;
+                break;
             }
+            return $connection;
         }
         else
         {

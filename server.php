@@ -1,6 +1,6 @@
 <?php
 $http = new swoole_http_server("127.0.0.1", 9501);
-$http->set(['worker_num' => 4]);
+$http->set(['worker_num' => 8]);
 require __DIR__.'/src/Swoole/Async/RedisClient.php';
 $redis = new Swoole\Async\RedisClient('127.0.0.1');
 
@@ -9,8 +9,11 @@ $http->on('request', function ($request, swoole_http_response $response) use ($r
         $response->end($redis->stats());
     } else {
         $redis->get(
-            'key1',
-            function ($result) use ($response) {
+            'hello',
+            function ($result, $success) use ($response) {
+                if (!$success) {
+                    echo "get from redis failed\n";
+                }
                 $response->end("<h1>Hello Swoole. value=" . $result . "</h1>");
             }
         );
