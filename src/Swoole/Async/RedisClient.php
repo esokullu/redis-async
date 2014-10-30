@@ -138,10 +138,9 @@ class RedisConnection
     /**
      * 等待发送的数据
      */
-    protected $wait_send;
-    protected $wait_recv;
+    protected $wait_send = false;
+    protected $wait_recv = false;
     protected $multi_line = false;
-    protected $require_line_n = 0;
     public $fields;
 
     function __construct(RedisClient $redis)
@@ -205,8 +204,8 @@ class RedisConnection
             $this->buffer .= $data;
             if ($this->multi_line)
             {
-                $rn_count = substr_count($this->buffer, "\r\n");
-                if ($this->require_line_n == $rn_count)
+                $require_line_n = $this->multi_line * 2 + 1 - substr_count($data, "$-1\r\n");
+                if (substr_count($this->buffer, "\r\n") - 1 == $require_line_n)
                 {
                     goto parse_multi_line;
                 }
@@ -218,7 +217,7 @@ class RedisConnection
             else
             {
                 //就绪
-                if (strlen($this->buffer) == $this->wait_recv)
+                if (strlen($this->buffer) >= $this->wait_recv)
                 {
                     goto ready;
                 }
@@ -257,36 +256,46 @@ class RedisConnection
         {
             parse_multi_line:
             $data_line_num = intval(substr($lines[0], 1));
-            //echo "data_line_num=$data_line_num\n";
-            //ready
-            //TODO: 这里解析是不对的，有不存在key会导致失败
-            if ($data_line_num == (count($lines) / 2) - 1)
+            $require_line_n = $data_line_num * 2 + 1 - substr_count($data, "$-1\r\n");
+            $lines_n = count($lines) - 1;
+
+            if ($lines_n == $require_line_n)
             {
                 $result = array();
-                for ($i = 1; $i <= $data_line_num; $i++)
+                $key_n = 0;
+                for ($i = 1; $i < $lines_n; $i++)
                 {
-                    //echo $i."\n";
-                    if ($this->fields)
+                    //not exists
+                    if (substr($lines[$i], 1, 2) === '-1')
                     {
-                        $result[$this->fields[$i - 1]] = $lines[$i * 2];
+                        $value = false;
                     }
                     else
                     {
-                        $result[] = $lines[$i * 2];
+                        $value = $lines[$i + 1];
+                        $i++;
                     }
+                    if ($this->fields)
+                    {
+                        $result[$this->fields[$key_n]] = $value;
+                    }
+                    else
+                    {
+                        $result[] = $value;
+                    }
+                    $key_n  ++;
                 }
-                if ($this->fields)
-                {
-                    $this->fields = false;
-                }
+                $this->fields = false;
                 $this->multi_line = false;
-                $this->require_line_n = 0;
+                $this->wait_recv = false;
             }
+            //数据不足，需要缓存
             else
             {
-                $this->multi_line = true;
-                $this->require_line_n = $data_line_num * 2 + 2;
+                $this->multi_line = $data_line_num;
                 $this->buffer = $data;
+                $this->wait_recv = true;
+                return;
             }
         }
         elseif ($type == ':')
