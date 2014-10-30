@@ -32,10 +32,7 @@ class RedisClient
 
     function trace($msg)
     {
-        if ($this->debug)
-        {
-            echo "-----------------------------------------\n".trim($msg)."\n-----------------------------------------\n";
-        }
+        echo "-----------------------------------------\n".trim($msg)."\n-----------------------------------------\n";
     }
 
     function stats()
@@ -198,7 +195,10 @@ class RedisConnection
 
     function onReceive($cli, $data)
     {
-        $this->redis->trace($data);
+        if ($this->redis->debug)
+        {
+            $this->redis->trace($data);
+        }
         if ($this->wait_recv)
         {
             $this->buffer .= $data;
