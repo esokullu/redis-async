@@ -195,6 +195,7 @@ class RedisConnection
 
     function onReceive($cli, $data)
     {
+        $success = true;
         if ($this->redis->debug)
         {
             $this->redis->trace($data);
@@ -228,7 +229,7 @@ class RedisConnection
                 }
             }
         }
-        $success = true;
+
         $lines = explode("\r\n", $data);
         $type = $lines[0][0];
         if ($type == '-')
@@ -249,6 +250,7 @@ class RedisConnection
                 $this->wait_recv = $len;
                 $this->buffer = $lines[1];
                 $this->multi_line = false;
+                return;
             }
             $result = $lines[1];
         }
