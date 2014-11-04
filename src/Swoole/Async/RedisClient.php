@@ -219,6 +219,7 @@ class RedisConnection
                 //就绪
                 if (strlen($this->buffer) >= $this->wait_recv)
                 {
+                    $result = rtrim($this->buffer, "\r\n");
                     goto ready;
                 }
                 else
