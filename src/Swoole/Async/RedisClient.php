@@ -113,7 +113,7 @@ class RedisClient
         unset($this->pool[$id]);
     }
 
-    function freeConnection($id, $connection)
+    function freeConnection($id, RedisConnection $connection)
     {
         $this->pool[$id] = $connection;
     }
@@ -151,6 +151,19 @@ class RedisConnection
         $this->client = $client;
         $redis->pool[$client->sock] = $this;
         $this->redis = $redis;
+    }
+
+    /**
+     * 清理数据
+     */
+    function clean()
+    {
+        $this->buffer = '';
+        $this->callback;
+        $this->wait_send = false;
+        $this->wait_recv = false;
+        $this->multi_line = false;
+        $this->fields = array();
     }
 
     /**
@@ -288,9 +301,7 @@ class RedisConnection
                     }
                     $key_n  ++;
                 }
-                $this->fields = false;
-                $this->multi_line = false;
-                $this->wait_recv = false;
+                goto ready;
             }
             //数据不足，需要缓存
             else
@@ -304,6 +315,7 @@ class RedisConnection
         elseif ($type == ':')
         {
             $result = intval(substr($lines[0], 1));
+            goto ready;
         }
         else
         {
@@ -312,6 +324,7 @@ class RedisConnection
         }
 
         ready:
+        $this->clean();
         $this->redis->freeConnection($cli->sock, $this);
         call_user_func($this->callback, $result, $success);
     }
