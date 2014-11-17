@@ -272,23 +272,24 @@ class RedisConnection
         {
             parse_multi_line:
             $data_line_num = intval(substr($lines[0], 1));
-            $require_line_n = $data_line_num * 2 + 1 - substr_count($data, "$-1\r\n");
-            $lines_n = count($lines) - 1;
+            $data_lines = explode("\r\n", $lines[1]);
+            $require_line_n = $data_line_num * 2 - substr_count($data, "$-1\r\n");
+            $lines_n = count($data_lines) - 1;
 
             if ($lines_n == $require_line_n)
             {
                 $result = array();
                 $key_n = 0;
-                for ($i = 1; $i < $lines_n; $i++)
+                for ($i = 0; $i < $lines_n; $i++)
                 {
                     //not exists
-                    if (substr($lines[$i], 1, 2) === '-1')
+                    if (substr($data_lines[$i], 1, 2) === '-1')
                     {
                         $value = false;
                     }
                     else
                     {
-                        $value = $lines[$i + 1];
+                        $value = $data_lines[$i + 1];
                         $i++;
                     }
                     if ($this->fields)
@@ -307,7 +308,7 @@ class RedisConnection
             else
             {
                 $this->multi_line = $data_line_num;
-                $this->buffer = $data;
+                $this->buffer = $lines[1];
                 $this->wait_recv = true;
                 return;
             }
