@@ -243,7 +243,7 @@ class RedisConnection
             }
         }
 
-        $lines = explode("\r\n", $data);
+        $lines = explode("\r\n", $data, 2);
         $type = $lines[0][0];
         if ($type == '-')
         {
