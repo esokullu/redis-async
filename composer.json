@@ -1,5 +1,5 @@
 {
-  "name": "swoole/redis-async",
+  "name": "esokullu/redis-async",
   "type": "library",
   "description": "Swoole async Redis library.",
   "homepage": "https://swoole.co.uk",
