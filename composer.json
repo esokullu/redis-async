@@ -1,0 +1,15 @@
+{
+  "name": "swoole/redis-async",
+  "type": "library",
+  "description": "Swoole async Redis library.",
+  "homepage": "https://swoole.co.uk",
+  "license": "MIT",
+    "require": {
+        "ext-swoole": "^4.0.1"
+    },
+    "autoload": {
+	     "psr-4": {
+		       "Swoole\\Async\\": "src/Swoole/Async"
+	     }
+    }
+}
